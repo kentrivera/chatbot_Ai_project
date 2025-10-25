@@ -1,0 +1,32 @@
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+error.log
+access.log
+
+# Ignore sensitive files
+db_config.php
+
+# Ignore uploaded images (but keep the directory)
+Images/chat_uploads/*
+!Images/chat_uploads/.gitkeep
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore temporary files
+*.tmp
+*.temp
+~*
+
+# Ignore node_modules if any
+node_modules/
+
+# Ignore vendor if using Composer
+vendor/
