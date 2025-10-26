@@ -324,6 +324,76 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
         </div>
     </div>
 
+    <!-- Edit Schedule Modal -->
+    <div id="editScheduleModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-[75] overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-xl w-full">
+                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+                    <div>
+                        <h3 class="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Edit Schedule</h3>
+                        <p id="editScheduleProfessorLabel" class="text-sm text-gray-500 mt-1"></p>
+                    </div>
+                    <button onclick="closeEditSchedule()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark text-2xl"></i>
+                    </button>
+                </div>
+                <form action="schedule_update.php" method="POST" enctype="multipart/form-data" class="p-6 space-y-4" id="editScheduleForm">
+                    <input type="hidden" name="schedule_id" id="editScheduleId">
+                    <input type="hidden" name="professor_id" id="editScheduleProfessorId">
+                    <input type="hidden" name="existing_file" id="editScheduleExistingFile">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                        <input type="text" name="subject" id="editScheduleSubject" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition" placeholder="e.g., Data Structures">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Day *</label>
+                            <select name="day" id="editScheduleDay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition">
+                                <option value="">Select Day</option>
+                                <option>Monday</option>
+                                <option>Tuesday</option>
+                                <option>Wednesday</option>
+                                <option>Thursday</option>
+                                <option>Friday</option>
+                                <option>Saturday</option>
+                                <option>Sunday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Time *</label>
+                            <input type="text" name="time" id="editScheduleTime" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition" placeholder="e.g., 8:00 AM - 10:00 AM">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Room *</label>
+                        <input type="text" name="room" id="editScheduleRoom" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition" placeholder="e.g., Room 101">
+                    </div>
+                    <div class="border rounded-lg p-4 bg-gray-50">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Current Attachment</label>
+                        <div id="editScheduleFileInfo" class="text-sm text-gray-600"></div>
+                        <div class="mt-3 space-y-2">
+                            <label class="block text-sm font-medium text-gray-700">Replace Attachment (Optional)</label>
+                            <input type="file" name="schedule_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="editScheduleRemoveFile" name="remove_file" value="1" class="w-4 h-4 text-purple-600 border-gray-300 rounded">
+                                <label for="editScheduleRemoveFile" class="text-sm text-gray-600">Remove current attachment</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all duration-300 shadow-md hover:shadow-xl">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Update Schedule
+                        </button>
+                        <button type="button" onclick="closeEditSchedule()" class="px-6 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-semibold transition duration-200">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- View Professor Modal -->
     <div id="viewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -639,17 +709,46 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
                             const dayVal = sched.day || sched.days || 'N/A';
                             const timeVal = sched.time || 'N/A';
                             const roomVal = sched.room || 'N/A';
+                            const scheduleId = sched.id || sched.schedule_id;
+                            const schedulePayload = {
+                                id: scheduleId,
+                                professor_id: sched.professor_id || id,
+                                subject: subject,
+                                day: dayVal,
+                                time: timeVal,
+                                room: roomVal,
+                                schedule_file: sched.schedule_file || ''
+                            };
+                            const scheduleDataAttr = esc(JSON.stringify(schedulePayload));
+                            const editButton = `
+                                <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition"
+                                    data-schedule='${scheduleDataAttr}' data-professor='${esc(name)}' onclick="openEditScheduleFromButton(this)">
+                                    <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                    Edit
+                                </button>
+                            `;
+                            const deleteButton = `
+                                <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition"
+                                    data-schedule-id='${scheduleId}' onclick="deleteScheduleFromButton(this)">
+                                    <i class="fa-solid fa-trash text-sm"></i>
+                                    Delete
+                                </button>
+                            `;
                             // Attachment link is shown under the modal title; omit per-card file link
                             content += `
                                 <div class="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-300 stat-card" style="animation-delay: ${delay}s">
-                                    <div class="flex justify-between items-start mb-3">
+                                    <div class="flex justify-between items-start gap-3 mb-3">
                                         <div class="flex-1 min-w-0">
                                             <h5 class="font-bold text-gray-800 truncate">${esc(subject)}</h5>
                                             ${description}
                                         </div>
-                                        ${badge}
+                                        <div class="flex flex-col items-end gap-2 shrink-0">
+                                            ${badge}
+                                            ${editButton}
+                                            ${deleteButton}
+                                        </div>
                                     </div>
-                                        <div class="space-y-2 text-sm">
+                                    <div class="space-y-2 text-sm">
                                         <div class="flex items-center gap-2 text-gray-700">
                                             <i class="fa-solid fa-calendar-day text-pink-500 w-4"></i>
                                             <span class="truncate">${esc(dayVal)}</span>
@@ -662,7 +761,6 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
                                             <i class="fa-solid fa-door-open text-blue-500 w-4"></i>
                                             <span class="font-semibold truncate">${esc(roomVal)}</span>
                                         </div>
-                                        
                                     </div>
                                 </div>
                             `;
@@ -734,6 +832,159 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
             document.getElementById('createScheduleModal').classList.add('hidden');
         }
 
+        function openEditScheduleFromButton(button) {
+            try {
+                const scheduleData = JSON.parse(button.getAttribute('data-schedule') || '{}');
+                const professorName = button.getAttribute('data-professor') || '';
+                openEditSchedule(scheduleData, professorName);
+            } catch (error) {
+                console.error('Failed to parse schedule data', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Unable to load schedule details for editing.',
+                    confirmButtonColor: '#8b5cf6'
+                });
+            }
+        }
+
+        function openEditSchedule(schedule, professorName) {
+            if (!schedule || !schedule.id) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing Data',
+                    text: 'Schedule information is incomplete.',
+                    confirmButtonColor: '#8b5cf6'
+                });
+                return;
+            }
+
+            const idField = document.getElementById('editScheduleId');
+            const profField = document.getElementById('editScheduleProfessorId');
+            const subjectField = document.getElementById('editScheduleSubject');
+            const daySelect = document.getElementById('editScheduleDay');
+            const timeField = document.getElementById('editScheduleTime');
+            const roomField = document.getElementById('editScheduleRoom');
+            const existingFileField = document.getElementById('editScheduleExistingFile');
+            const removeFileCheckbox = document.getElementById('editScheduleRemoveFile');
+            const fileInfo = document.getElementById('editScheduleFileInfo');
+            const professorLabel = document.getElementById('editScheduleProfessorLabel');
+            const fileInput = document.querySelector('#editScheduleForm input[type="file"]');
+
+            idField.value = schedule.id;
+            profField.value = schedule.professor_id || '';
+            subjectField.value = schedule.subject || '';
+            timeField.value = schedule.time || '';
+            roomField.value = schedule.room || '';
+
+            const currentDay = schedule.day || '';
+            if (currentDay) {
+                const hasOption = Array.from(daySelect.options).some(opt => opt.value === currentDay);
+                if (!hasOption) {
+                    const opt = document.createElement('option');
+                    opt.value = currentDay;
+                    opt.textContent = currentDay;
+                    daySelect.appendChild(opt);
+                }
+                daySelect.value = currentDay;
+            } else {
+                daySelect.value = '';
+            }
+
+            existingFileField.value = schedule.schedule_file || '';
+            removeFileCheckbox.checked = false;
+            removeFileCheckbox.disabled = !schedule.schedule_file;
+            if (fileInput) {
+                fileInput.value = '';
+            }
+
+            if (professorLabel) {
+                professorLabel.textContent = professorName ? `Professor: ${professorName}` : '';
+            }
+
+            if (schedule.schedule_file) {
+                const fileUrl = schedule.schedule_file;
+                const extension = (fileUrl.split('.').pop() || '').toLowerCase();
+                let iconClass = 'fa-file';
+                if (extension === 'pdf') iconClass = 'fa-file-pdf';
+                else if (['doc','docx'].includes(extension)) iconClass = 'fa-file-word';
+                else if (['jpg','jpeg','png','gif','webp'].includes(extension)) iconClass = 'fa-file-image';
+                fileInfo.innerHTML = `
+                    <a href="${esc(fileUrl)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-purple-100 text-purple-700 hover:bg-purple-50 transition">
+                        <i class="fa-solid ${iconClass}"></i>
+                        <span class="text-sm truncate max-w-[12rem]">${esc(fileUrl.split('/').pop())}</span>
+                    </a>
+                `;
+            } else {
+                fileInfo.innerHTML = '<p class="text-sm text-gray-500">No attachment uploaded.</p>';
+            }
+
+            document.getElementById('editScheduleModal').classList.remove('hidden');
+        }
+
+        function closeEditSchedule() {
+            const modal = document.getElementById('editScheduleModal');
+            const form = document.getElementById('editScheduleForm');
+            const fileInfo = document.getElementById('editScheduleFileInfo');
+            const removeFileCheckbox = document.getElementById('editScheduleRemoveFile');
+
+            modal.classList.add('hidden');
+            form.reset();
+            document.getElementById('editScheduleId').value = '';
+            document.getElementById('editScheduleProfessorId').value = '';
+            document.getElementById('editScheduleExistingFile').value = '';
+            fileInfo.innerHTML = '';
+            removeFileCheckbox.checked = false;
+            removeFileCheckbox.disabled = false;
+            const fileInput = document.querySelector('#editScheduleForm input[type="file"]');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            const professorLabel = document.getElementById('editScheduleProfessorLabel');
+            if (professorLabel) {
+                professorLabel.textContent = '';
+            }
+        }
+
+        function deleteScheduleFromButton(button) {
+            const scheduleId = parseInt(button.getAttribute('data-schedule-id') || '0', 10);
+            if (!scheduleId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Schedule',
+                    text: 'Unable to determine which schedule to delete.',
+                    confirmButtonColor: '#ef4444'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Delete Schedule?',
+                text: 'This schedule will be permanently removed.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete it',
+                cancelButtonText: 'Cancel'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'schedule_delete.php';
+
+                    const inputId = document.createElement('input');
+                    inputId.type = 'hidden';
+                    inputId.name = 'schedule_id';
+                    inputId.value = scheduleId;
+                    form.appendChild(inputId);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
         // Show success message if redirected with success parameter
         <?php if (isset($_GET['success'])): ?>
         Swal.fire({
@@ -751,6 +1002,28 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
             icon: 'success',
             title: 'Schedule Created',
             text: 'New schedule has been added.',
+            confirmButtonColor: '#8b5cf6',
+            timer: 2500
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+        <?php endif; ?>
+
+        <?php if (isset($_GET['sched_updated'])): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Schedule Updated',
+            text: 'Schedule details have been saved.',
+            confirmButtonColor: '#8b5cf6',
+            timer: 2500
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+        <?php endif; ?>
+
+        <?php if (isset($_GET['sched_deleted'])): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Schedule Deleted',
+            text: 'Schedule has been removed successfully.',
             confirmButtonColor: '#8b5cf6',
             timer: 2500
         });

@@ -8,12 +8,10 @@
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 <div class="flex items-center gap-2">
-                    <div class="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-2">
-                        <i class="fas fa-graduation-cap text-white text-xl"></i>
-                    </div>
+                    <img src="Images/Bsit.logo.ico" alt="Logo" class="w-10 h-10 object-contain">
                     <div class="hidden sm:block">
                         <h1 class="text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent"><?php echo $page_title ?? 'Admin Panel'; ?></h1>
-                        <p class="text-xs text-gray-500"><?php echo $page_subtitle ?? 'Chatbot System'; ?></p>
+                        <p class="text-xs text-gray-500"><?php echo $page_subtitle ?? 'FindMyProf'; ?></p>
                     </div>
                 </div>
             </div>

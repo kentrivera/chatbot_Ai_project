@@ -1,4 +1,6 @@
 <?php
+session_start();
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $conn = new mysqli("localhost", "root", "", "chatbot");
 
@@ -9,17 +11,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $first_name = $conn->real_escape_string($_POST['first_name']);
     $last_name = $conn->real_escape_string($_POST['last_name']);
     $username = $conn->real_escape_string($_POST['username']);
+    $email = isset($_POST['email']) ? $conn->real_escape_string($_POST['email']) : null;
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-
-    // Save full name, assuming you have first_name and last_name columns
-    $sql = "INSERT INTO users (username, password, role, first_name, last_name) 
-            VALUES ( '$username', '$password', 'student', '$first_name', '$last_name')";
-
-    if ($conn->query($sql) === TRUE) {
-        header("Location: index.php");
-        exit();
+    $role = 'student'; // Only students can self-register, professors are created by admin
+    
+    // Check if username already exists
+    $check_stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
+    $check_stmt->bind_param("s", $username);
+    $check_stmt->execute();
+    if ($check_stmt->get_result()->num_rows > 0) {
+        $error = "Username already exists. Please choose another.";
+        $check_stmt->close();
     } else {
-        $error = "Registration failed: " . $conn->error;
+        $check_stmt->close();
+        
+        // Insert user with prepared statement
+        $stmt = $conn->prepare("INSERT INTO users (username, password, role, first_name, last_name, email) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssss", $username, $password, $role, $first_name, $last_name, $email);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            $conn->close();
+            header("Location: login.php?registered=1");
+            exit();
+        } else {
+            $error = "Registration failed: " . $stmt->error;
+            $stmt->close();
+        }
     }
 
     $conn->close();
@@ -41,9 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <!-- Header -->
         <div class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-8 text-white text-center">
             <div class="bg-white rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                <i class="fas fa-user-graduate text-4xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"></i>
+                <img src="Images/Bsit.logo.ico" alt="Logo" class="w-16 h-16 object-contain">
             </div>
-            <h2 class="text-3xl font-bold">Student Registration</h2>
+            <h2 class="text-3xl font-bold">FindMyProf</h2>
             <p class="text-blue-100 mt-2">Create your account</p>
         </div>
 
@@ -87,14 +105,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200"
                            placeholder="Choose a username">
                 </div>
+                
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-2">
+                        <i class="fas fa-envelope text-blue-500 mr-2"></i>Email Address (Optional)
+                    </label>
+                    <input type="email" name="email" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                           placeholder="your.email@example.com">
+                </div>
 
                 <div>
                     <label class="block text-gray-700 text-sm font-semibold mb-2">
                         <i class="fas fa-lock text-purple-500 mr-2"></i>Password
                     </label>
-                    <input type="password" name="password" required 
+                    <input type="password" name="password" required minlength="6"
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200"
-                           placeholder="Create a password">
+                           placeholder="Create a password (min. 6 characters)">
                 </div>
 
                 <button type="submit" 
@@ -116,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <!-- Login Link -->
             <div class="text-center">
                 <p class="text-gray-600">Already have an account?</p>
-                <a href="index.php" class="inline-block mt-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-semibold hover:from-blue-700 hover:to-purple-700 transition duration-200">
+                <a href="login.php" class="inline-block mt-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-semibold hover:from-blue-700 hover:to-purple-700 transition duration-200">
                     <i class="fas fa-sign-in-alt mr-1"></i>Login here
                 </a>
             </div>

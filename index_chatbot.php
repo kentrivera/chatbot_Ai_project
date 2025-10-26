@@ -1,9 +1,6 @@
 ﻿<?php
-session_start();
-if (!isset($_SESSION['role'])) {
-    header("Location: index.php");
-    exit();
-}
+require_once 'security_config.php';
+requireAuth();
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -1,5 +1,21 @@
 <?php
+// Start session with secure settings
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_secure', 0); // Set to 1 if using HTTPS
 session_start();
+
+// Redirect if already logged in
+if (isset($_SESSION['username']) && isset($_SESSION['role'])) {
+    if ($_SESSION['role'] == 'admin') {
+        header("Location: admin.php");
+    } elseif ($_SESSION['role'] == 'professor') {
+        header("Location: professor_dashboard.php");
+    } else {
+        header("Location: index_chatbot.php");
+    }
+    exit();
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $conn = new mysqli("localhost", "root", "", "chatbot");
@@ -10,20 +26,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $conn->real_escape_string($_POST['username']);
     $password = $_POST['password'];
 
-    $sql = "SELECT * FROM users WHERE username = '$username'";
-    $result = $conn->query($sql);
+    // Use prepared statement to prevent SQL injection
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result->num_rows == 1) {
         $user = $result->fetch_assoc();
         if (password_verify($password, $user['password'])) {
+            // Regenerate session ID to prevent session fixation
+            session_regenerate_id(true);
+            
+            // Store user details in the session
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['first_name'] = $user['first_name'];
             $_SESSION['last_name'] = $user['last_name'];
             $_SESSION['user_id'] = $user['id'];
+            $_SESSION['login_time'] = time();
+            $_SESSION['user_ip'] = $_SERVER['REMOTE_ADDR'];
+            $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
 
+            // Redirect based on role
             if ($user['role'] == 'admin') {
                 header("Location: admin.php");
+            } elseif ($user['role'] == 'professor') {
+                header("Location: professor_dashboard.php");
             } else {
                 header("Location: index_chatbot.php");
             }
@@ -35,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "User not found!";
     }
 
+    $stmt->close();
     $conn->close();
 }
 ?>
@@ -52,14 +82,41 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <!-- Header -->
         <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white text-center">
             <div class="bg-white rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                <i class="fas fa-graduation-cap text-4xl text-blue-600"></i>
+                <img src="Images/Bsit.logo.ico" alt="Logo" class="w-16 h-16 object-contain">
             </div>
-            <h2 class="text-3xl font-bold">Chatbot System</h2>
+            <h2 class="text-3xl font-bold">FindMyProf</h2>
             <p class="text-blue-100 mt-2">Login to your account</p>
         </div>
 
         <!-- Form -->
         <div class="p-8">
+            <?php if (isset($_GET['registered'])): ?>
+                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span>Registration successful! Please login with your credentials.</span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (isset($_GET['timeout'])): ?>
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-clock mr-2"></i>
+                        <span>Your session has expired. Please login again.</span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <?php if (isset($_GET['error']) && $_GET['error'] == 'session_invalid'): ?>
+                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <span>Session validation failed. Please login again.</span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
             <?php if (isset($error)): ?>
                 <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
                     <div class="flex items-center">
@@ -69,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
             <?php endif; ?>
 
-            <form method="POST" action="index.php" class="space-y-6">
+            <form method="POST" action="login.php" class="space-y-6">
                 <div>
                     <label class="block text-gray-700 text-sm font-semibold mb-2">
                         <i class="fas fa-user text-blue-500 mr-2"></i>Username
