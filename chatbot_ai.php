@@ -302,8 +302,9 @@ function findBestMatch(string $query, array $candidates, float $minimumScore = 0
 }
 
 function getSchedulesForProfessor(mysqli $conn, int $professorId): array {
-    $stmt = $conn->prepare("SELECT subject, day, time, room, schedule_file FROM schedules WHERE professor_id = ?");
+    $stmt = $conn->prepare("SELECT id, subject, day, time, room, schedule_file FROM schedules WHERE professor_id = ?");
     if (!$stmt) {
+        error_log("❌ Failed to prepare getSchedulesForProfessor query");
         return [];
     }
     $stmt->bind_param('i', $professorId);
@@ -311,13 +312,23 @@ function getSchedulesForProfessor(mysqli $conn, int $professorId): array {
     $result = $stmt->get_result();
     $schedules = [];
     while ($row = $result->fetch_assoc()) {
+        // Check if file exists
+        if (!empty($row['schedule_file']) && file_exists($row['schedule_file'])) {
+            $row['has_file'] = true;
+            $row['file_name'] = basename($row['schedule_file']);
+            $row['file_extension'] = strtolower(pathinfo($row['schedule_file'], PATHINFO_EXTENSION));
+        } else {
+            $row['has_file'] = false;
+        }
         $schedules[] = $row;
     }
     $stmt->close();
+    error_log("📅 getSchedulesForProfessor($professorId) returned " . count($schedules) . " schedules");
     return $schedules;
 }
 
 function hydrateProfessorRow(mysqli $conn, array $row): array {
+    error_log("🔍 Hydrating professor: {$row['professor_name']} (ID: {$row['professor_id']})");
     $row['schedules'] = getSchedulesForProfessor($conn, (int) $row['professor_id']);
     return $row;
 }
@@ -413,7 +424,7 @@ function composeScheduleAnswer(string $professorName, array $schedules): string 
 }
 
 function getSchedulesBySubject(mysqli $conn, string $subject): array {
-    $stmt = $conn->prepare("SELECT s.subject, s.day, s.time, s.room, s.schedule_file, p.professor_name, p.professor_id, p.photo FROM schedules s JOIN professors p ON p.professor_id = s.professor_id WHERE s.subject LIKE CONCAT('%', ?, '%') ORDER BY s.day, s.time, p.professor_name");
+    $stmt = $conn->prepare("SELECT s.id, s.subject, s.day, s.time, s.room, s.schedule_file, p.professor_name, p.professor_id, p.photo FROM schedules s JOIN professors p ON p.professor_id = s.professor_id WHERE s.subject LIKE CONCAT('%', ?, '%') ORDER BY s.day, s.time, p.professor_name");
     if (!$stmt) {
         return [];
     }
@@ -424,6 +435,14 @@ function getSchedulesBySubject(mysqli $conn, string $subject): array {
 
     $schedules = [];
     while ($row = $result->fetch_assoc()) {
+        // Check if file exists
+        if (!empty($row['schedule_file']) && file_exists($row['schedule_file'])) {
+            $row['has_file'] = true;
+            $row['file_name'] = basename($row['schedule_file']);
+            $row['file_extension'] = strtolower(pathinfo($row['schedule_file'], PATHINFO_EXTENSION));
+        } else {
+            $row['has_file'] = false;
+        }
         $schedules[] = $row;
     }
 
@@ -810,7 +829,7 @@ if ($action === 'list_schedules') {
     $schedules = [];
 
     if ($name !== '') {
-        $sql = "SELECT p.professor_name, p.photo, p.plantilla_title, s.subject, s.day, s.time, s.room, s.schedule_file
+        $sql = "SELECT p.professor_name, p.photo, p.plantilla_title, s.id, s.subject, s.day, s.time, s.room, s.schedule_file
                 FROM schedules s
                 JOIN professors p ON p.professor_id = s.professor_id
                 WHERE p.professor_name LIKE CONCAT('%', ?, '%')
@@ -821,18 +840,34 @@ if ($action === 'list_schedules') {
             $stmt->execute();
             $result = $stmt->get_result();
             while ($row = $result->fetch_assoc()) {
+                // Check if file exists
+                if (!empty($row['schedule_file']) && file_exists($row['schedule_file'])) {
+                    $row['has_file'] = true;
+                    $row['file_name'] = basename($row['schedule_file']);
+                    $row['file_extension'] = strtolower(pathinfo($row['schedule_file'], PATHINFO_EXTENSION));
+                } else {
+                    $row['has_file'] = false;
+                }
                 $schedules[] = $row;
             }
             $stmt->close();
         }
     } else {
-        $sql = "SELECT p.professor_name, p.photo, p.plantilla_title, s.subject, s.day, s.time, s.room, s.schedule_file
+        $sql = "SELECT p.professor_name, p.photo, p.plantilla_title, s.id, s.subject, s.day, s.time, s.room, s.schedule_file
                 FROM schedules s
                 JOIN professors p ON p.professor_id = s.professor_id
                 ORDER BY p.professor_name, s.day, s.time";
         $result = $conn->query($sql);
         if ($result) {
             while ($row = $result->fetch_assoc()) {
+                // Check if file exists
+                if (!empty($row['schedule_file']) && file_exists($row['schedule_file'])) {
+                    $row['has_file'] = true;
+                    $row['file_name'] = basename($row['schedule_file']);
+                    $row['file_extension'] = strtolower(pathinfo($row['schedule_file'], PATHINFO_EXTENSION));
+                } else {
+                    $row['has_file'] = false;
+                }
                 $schedules[] = $row;
             }
         }
@@ -1335,27 +1370,114 @@ if ($action !== null) {
 }
 
 if (isset($_GET['name'])) {
-    $name = $_GET['name'];
-    $stmt = $conn->prepare("SELECT * FROM professors WHERE professor_name LIKE CONCAT('%', ?, '%')");
+    $name = trim($_GET['name']);
+    error_log("🔎 Searching for professor with name: '$name'");
+    
+    // Enhanced strict filtering for professor names
+    // Remove common noise words
+    $cleanName = preg_replace('/\b(show|view|display|find|search|get|professor|prof|dr|teacher|instructor|schedule|schedules|class|classes)\b/i', '', $name);
+    $cleanName = trim(preg_replace('/\s+/', ' ', $cleanName));
+    
+    error_log("🧹 Cleaned search term: '$cleanName'");
+    
+    // If the cleaned name is too short or empty, return no results
+    if (strlen($cleanName) < 2) {
+        respondJson(['professors' => [], 'message' => 'Please provide a more specific professor name (at least 2 characters).']);
+    }
+    
+    // Try exact match first (case-insensitive)
+    $stmt = $conn->prepare("SELECT * FROM professors WHERE LOWER(professor_name) = LOWER(?)");
     if ($stmt) {
-        $stmt->bind_param('s', $name);
+        $stmt->bind_param('s', $cleanName);
         $stmt->execute();
         $result = $stmt->get_result();
-
+        
         $professors = [];
         while ($row = $result->fetch_assoc()) {
             $professors[] = hydrateProfessorRow($conn, $row);
         }
         $stmt->close();
+        
+        // If exact match found, return immediately
+        if (count($professors) > 0) {
+            error_log("✅ Found " . count($professors) . " exact match(es)");
+            respondJson(['professors' => $professors, 'match_type' => 'exact']);
+        }
+    }
+    
+    error_log("⚠️ No exact match found, trying word boundary match...");
+    
+    // Try partial match with word boundary (more strict)
+    $stmt = $conn->prepare("SELECT * FROM professors WHERE professor_name REGEXP CONCAT('[[:<:]]', ?, '[[:>:]]')");
+    if ($stmt) {
+        $stmt->bind_param('s', $cleanName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $professors = [];
+        while ($row = $result->fetch_assoc()) {
+            $professors[] = hydrateProfessorRow($conn, $row);
+        }
+        $stmt->close();
+        
+        // If word boundary match found, return
+        if (count($professors) > 0) {
+            error_log("✅ Found " . count($professors) . " word boundary match(es)");
+            respondJson(['professors' => $professors, 'match_type' => 'word']);
+        }
+    }
+    
+    error_log("⚠️ No word boundary match found, trying partial match...");
+    
+    // Last resort: partial match but filter by similarity
+    $stmt = $conn->prepare("SELECT * FROM professors WHERE professor_name LIKE CONCAT('%', ?, '%')");
+    if ($stmt) {
+        $stmt->bind_param('s', $cleanName);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $professors = [];
+        $nameTokens = explode(' ', strtolower($cleanName));
+        
+        while ($row = $result->fetch_assoc()) {
+            // Calculate match score
+            $profNameLower = strtolower($row['professor_name']);
+            $matchScore = 0;
+            
+            foreach ($nameTokens as $token) {
+                if (strlen($token) < 2) continue;
+                
+                // Higher score for exact token match
+                if (preg_match('/\b' . preg_quote($token, '/') . '\b/', $profNameLower)) {
+                    $matchScore += 3;
+                }
+                // Lower score for partial match
+                else if (strpos($profNameLower, $token) !== false) {
+                    $matchScore += 1;
+                }
+            }
+            
+            // Only include if match score is significant
+            if ($matchScore >= 2) {
+                $row['match_score'] = $matchScore;
+                $professors[] = hydrateProfessorRow($conn, $row);
+            }
+        }
+        $stmt->close();
+        
+        // Sort by match score (highest first)
+        usort($professors, function($a, $b) {
+            return ($b['match_score'] ?? 0) <=> ($a['match_score'] ?? 0);
+        });
 
         if (count($professors) > 0) {
-            respondJson(['professors' => $professors]);
+            respondJson(['professors' => $professors, 'match_type' => 'partial']);
         }
 
-        respondJson(['response' => "I couldn't find any professor with that name. Try searching for something else!"]);
+        respondJson(['professors' => [], 'message' => "No professor matching \"$cleanName\" found. Try: \"Show all professors\""]);
     }
 
-    respondJson(['response' => "I couldn't find any professor with that name. Try searching for something else!"]);
+    respondJson(['professors' => [], 'message' => "I couldn't find any professor with that name. Try searching for something else!"]);
 }
 
 respondJson(["error" => "No valid request parameters."]);

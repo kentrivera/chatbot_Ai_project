@@ -389,7 +389,8 @@ if (!isset($_SESSION['role'])) {
             const messages = [
                 "👋 Hello! I'm your AI Professor Assistant with Smart Understanding!",
                 "🧠 I can understand natural language - just ask me anything!",
-                "💡 Examples: 'show schedules', 'who teaches AI?', or just type a professor name!"
+                "� View schedules with attached files (PDF, DOC, images, etc.)",
+                "💡 Try: 'Show Dr. Smith's schedule' or 'Who teaches Database?'"
             ];
             
             messages.forEach((msg, i) => {
@@ -399,7 +400,7 @@ if (!isset($_SESSION['role'])) {
             // Show conversational examples after welcome
             setTimeout(() => {
                 showQueryExamples();
-            }, 2000);
+            }, 2800);
         }
         
         function showQueryExamples() {
@@ -411,28 +412,36 @@ if (!isset($_SESSION['role'])) {
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                         <div class="bg-white rounded-lg p-3 shadow-sm border border-indigo-100">
-                            <p class="font-semibold text-indigo-700 mb-1">📚 Academic Queries:</p>
+                            <p class="font-semibold text-indigo-700 mb-1">📚 Schedule Queries:</p>
                             <ul class="space-y-1 text-gray-700">
                                 <li>• "Show all schedules"</li>
-                                <li>• "Who teaches Algorithms?"</li>
-                                <li>• "List all professors"</li>
-                                <li>• "Expert in database"</li>
+                                <li>• "Schedule of Dr. Smith"</li>
+                                <li>• "Show Adrada's schedule"</li>
+                                <li>• "When does Johnson teach?"</li>
+                                <li>• "View professor Lee schedule"</li>
                             </ul>
                         </div>
                         <div class="bg-white rounded-lg p-3 shadow-sm border border-purple-100">
-                            <p class="font-semibold text-purple-700 mb-1">💬 Natural Language:</p>
+                            <p class="font-semibold text-purple-700 mb-1">� Subject & Expertise:</p>
                             <ul class="space-y-1 text-gray-700">
-                                <li>• Type professor name</li>
-                                <li>• "schedule for adrada"</li>
-                                <li>• "professors"</li>
-                                <li>• "schedules"</li>
+                                <li>• "Who teaches Algorithms?"</li>
+                                <li>• "List all professors"</li>
+                                <li>• "Expert in database"</li>
+                                <li>• "Find AI specialists"</li>
+                                <li>• Type any professor name</li>
                             </ul>
                         </div>
                     </div>
                     <div class="mt-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-2 border border-yellow-200">
                         <p class="text-xs text-gray-700 flex items-center gap-2">
+                            <i class="fas fa-file-pdf text-red-600"></i>
+                            <span><strong>File Attachments:</strong> View PDF, DOC, and other files attached to schedules!</span>
+                        </p>
+                    </div>
+                    <div class="mt-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-2 border border-blue-200">
+                        <p class="text-xs text-gray-700 flex items-center gap-2">
                             <i class="fas fa-robot text-indigo-600"></i>
-                            <span><strong>Plus emotional support:</strong> "Thank you", "I'm sad", "Tell me a joke"</span>
+                            <span><strong>Emotional support:</strong> "Thank you", "I'm sad", "Tell me a joke"</span>
                         </p>
                     </div>
                 </div>
@@ -581,10 +590,93 @@ if (!isset($_SESSION['role'])) {
                     /expertise\s+in\s+(.+)/i
                 ],
                 scheduleForProfessor: [
+                    // Standard patterns: "schedule of/for [name]"
                     /schedule\s+(of|for)\s+(.+)/i,
-                    /(.+)\s+schedule/i,
+                    /sched\s+(of|for)\s+(.+)/i,
+                    /class\s+(of|for)\s+(.+)/i,
+                    /calss\s+(of|for)\s+(.+)/i, // Common typo
+                    
+                    // Reverse patterns: "[name]'s schedule/sched/class"
+                    /(.+)['']s?\s+schedule/i,
+                    /(.+)['']s?\s+sched/i,
+                    /(.+)['']s?\s+class(es)?/i,
+                    /(.+)['']s?\s+calss(es)?/i, // Common typo
+                    /(.+)['']s?\s+time/i,
+                    /(.+)['']s?\s+teaching\s+(schedule|sched|time)/i,
+                    
+                    // Action + name + term: "show/view/display [name] schedule"
+                    /show\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /view\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /display\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /get\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /find\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /check\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /see\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /lookup\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    /search\s+(.+)\s+(schedule|sched|class|calss|time|loads?)/i,
+                    
+                    // Teaching patterns
                     /when\s+does\s+(.+)\s+teach/i,
-                    /(.+)\s+class(es)?\s+time/i
+                    /what\s+does\s+(.+)\s+teach/i,
+                    /(.+)\s+teaching\s+(schedule|sched|time)/i,
+                    /what\s+time\s+does\s+(.+)\s+have\s+class/i,
+                    /what\s+is\s+(.+)\s+(schedule|sched|class)/i,
+                    /whats?\s+(.+)\s+(schedule|sched|class)/i,
+                    
+                    // Subject patterns
+                    /(.+)\s+subjects?/i,
+                    /(.+)\s+loads?/i,
+                    /(.+)\s+courses?/i,
+                    
+                    // Time patterns
+                    /(.+)\s+class(es)?\s+time/i,
+                    /(.+)\s+calss(es)?\s+time/i, // Common typo
+                    /(.+)\s+time\s+table/i,
+                    /(.+)\s+timetable/i,
+                    
+                    // Availability patterns
+                    /when\s+is\s+(.+)\s+(available|free)/i,
+                    /(.+)\s+availability/i,
+                    /(.+)\s+office\s+hours?/i,
+                    
+                    // Direct name + action
+                    /(.+)\s+schedule\s+(today|now|this\s+week)/i,
+                    /(.+)\s+class\s+(today|now|this\s+week)/i,
+                    
+                    // Common misspellings and shortcuts
+                    /scheduel\s+(of|for)\s+(.+)/i, // schedule typo
+                    /scedule\s+(of|for)\s+(.+)/i, // schedule typo
+                    /shcedule\s+(of|for)\s+(.+)/i, // schedule typo
+                    /shedule\s+(of|for)\s+(.+)/i, // schedule typo
+                    /skeds?\s+(of|for)\s+(.+)/i, // Filipino slang
+                    /(.+)\s+scheduel/i, // schedule typo
+                    /(.+)\s+scedule/i, // schedule typo
+                    /(.+)\s+shcedule/i, // schedule typo
+                    /(.+)\s+shedule/i, // schedule typo
+                    /(.+)\s+skeds?/i, // Filipino slang
+                    
+                    // Question patterns
+                    /where\s+is\s+(.+)\s+(teaching|at)/i,
+                    /where\s+can\s+i\s+find\s+(.+)/i,
+                    /do\s+you\s+have\s+(.+)\s+(schedule|sched)/i,
+                    /can\s+you\s+show\s+(.+)\s+(schedule|sched)/i,
+                    /can\s+i\s+see\s+(.+)\s+(schedule|sched)/i,
+                    
+                    // Casual patterns
+                    /(.+)\s+ba\s+(may|meron)\s+(class|sched)/i, // Filipino
+                    /ano\s+(class|sched)\s+(ni|ng)\s+(.+)/i, // Filipino
+                    /kailan\s+(class|sched)\s+(ni|ng)\s+(.+)/i, // Filipino
+                    /saan\s+(class|sched)\s+(ni|ng)\s+(.+)/i, // Filipino
+                    
+                    // Abbreviated forms
+                    /prof\s+(.+)\s+(sched|schedule|class)/i,
+                    /(.+)\s+prof\s+(sched|schedule|class)/i,
+                    /sir\s+(.+)\s+(sched|schedule|class)/i,
+                    /(.+)\s+sir\s+(sched|schedule|class)/i,
+                    /maam?\s+(.+)\s+(sched|schedule|class)/i,
+                    /(.+)\s+maam?\s+(sched|schedule|class)/i,
+                    /dr\.?\s+(.+)\s+(sched|schedule|class)/i,
+                    /(.+)\s+dr\.?\s+(sched|schedule|class)/i
                 ]
             };
             
@@ -632,11 +724,59 @@ if (!isset($_SESSION['role'])) {
             for (const pattern of intentPatterns.scheduleForProfessor) {
                 const match = lowerQuery.match(pattern);
                 if (match) {
-                    const professorName = match[1] || match[2];
-                    if (professorName && professorName.length > 2 && !professorName.includes('show') && !professorName.includes('all')) {
-                        // Search for professor and show their schedule
-                        await searchProfessorSchedule(professorName.trim());
-                        return;
+                    console.log('🔍 Pattern matched:', pattern, 'Groups:', match);
+                    
+                    // Extract professor name from capturing groups
+                    let professorName = '';
+                    
+                    // Noise words to skip
+                    const noiseWords = ['of', 'for', 'schedule', 'sched', 'class', 'calss', 'classes', 
+                                       'time', 'teaching', 'teach', 'at', 'have', 'today', 'now', 
+                                       'this', 'week', 'available', 'free', 'scheduel', 'scedule',
+                                       'shcedule', 'shedule', 'sked', 'skeds', 'teaching', 'subject',
+                                       'subjects', 'load', 'loads', 'course', 'courses', 'timetable',
+                                       'table', 'availability', 'office', 'hours', 'hour', 'ba', 'may',
+                                       'meron', 'ano', 'kailan', 'saan', 'ni', 'ng', 'prof', 'sir',
+                                       'maam', 'ma\'am', 'dr', 'dr.', 'is', 'does', 'can', 'i', 'you',
+                                       'show', 'view', 'display', 'get', 'find', 'check', 'see', 'lookup',
+                                       'search', 'where', 'what', 'whats', 'when', 'do', 'the', 'a', 'an'];
+                    
+                    // Check all groups from end to start, find the longest valid name
+                    let candidates = [];
+                    for (let i = 1; i < match.length; i++) {
+                        if (match[i] && match[i].trim().length > 0) {
+                            const cleaned = match[i].trim().toLowerCase();
+                            // Skip if it's a noise word
+                            if (!noiseWords.includes(cleaned) && cleaned.length > 1) {
+                                candidates.push(match[i].trim());
+                            }
+                        }
+                    }
+                    
+                    // Take the longest candidate (likely the actual name)
+                    if (candidates.length > 0) {
+                        professorName = candidates.reduce((a, b) => a.length >= b.length ? a : b);
+                    }
+                    
+                    console.log('📋 Candidates:', candidates, 'Selected:', professorName);
+                    
+                    // Additional cleanup
+                    if (professorName) {
+                        professorName = professorName.trim()
+                            .replace(/^(show|view|display|get|find|check|see|lookup|search|prof|sir|maam?|dr\.?)\s+/i, '')
+                            .replace(/\s+(schedule|schedules|sched|class|classes|calss|time|times|today|now)$/i, '')
+                            .replace(/['']s$/i, '')
+                            .replace(/\s+ba$/i, '') // Remove Filipino "ba"
+                            .trim();
+                        
+                        // Final validation
+                        const skipWords = ['show', 'all', 'the', 'a', 'an', 'their', 'his', 'her', 'my', 'is', 'at'];
+                        if (professorName.length > 1 && !skipWords.includes(professorName.toLowerCase())) {
+                            console.log(`🎯 Final extracted professor name: "${professorName}" from query: "${query}"`);
+                            // Search for professor and show their schedule
+                            await searchProfessorSchedule(professorName);
+                            return;
+                        }
                     }
                 }
             }
@@ -658,16 +798,143 @@ if (!isset($_SESSION['role'])) {
                 const res = await fetch(`chatbot_ai.php?name=${encodeURIComponent(name)}`);
                 const data = await res.json();
                 
+                console.log('Schedule search result:', data); // Debug log
+                
                 if (data.professors && data.professors.length > 0) {
-                    addBotMessage(`📅 Schedule for "${name}":`);
-                    data.professors.forEach(prof => displayProfessorCard(prof));
+                    const matchType = data.match_type || 'partial';
+                    
+                    // For exact matches, only show the first (best) match
+                    const professorsToShow = (matchType === 'exact') ? [data.professors[0]] : data.professors;
+                    
+                    let message = '';
+                    if (matchType === 'exact') {
+                        message = `📅 Schedule for "${professorsToShow[0].professor_name}":`;
+                    } else if (matchType === 'word') {
+                        message = `📅 Found ${professorsToShow.length} professor(s) matching "${name}":`;
+                    } else {
+                        message = `📅 Found ${professorsToShow.length} possible match(es) for "${name}":`;
+                    }
+                    
+                    addBotMessage(message);
+                    
+                    // Display only schedule for each professor
+                    professorsToShow.forEach(prof => {
+                        console.log(`Displaying schedule for: ${prof.professor_name}, schedules count: ${prof.schedules?.length || 0}`);
+                        displayProfessorScheduleOnly(prof);
+                    });
                 } else {
-                    addBotMessage(`No professor matching "${escapeHtml(name)}" found. Try: "Show all professors"`);
+                    const errorMsg = data.message || `No professor matching "${escapeHtml(name)}" found. Try: "Show all professors"`;
+                    addBotMessage(errorMsg);
                 }
             } catch (error) {
                 console.error('Error searching professor:', error);
                 addBotMessage("❌ Database error.");
             }
+        }
+        
+        // Display only professor's schedule (no full card)
+        function displayProfessorScheduleOnly(prof) {
+            if (!prof.schedules || prof.schedules.length === 0) {
+                // If no schedules, show message
+                const noScheduleCard = `
+                    <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 mb-3">
+                        <div class="flex items-center gap-2 mb-3">
+                            <img src="${prof.photo || 'Images/default.png'}" class="w-12 h-12 rounded-full object-cover border-2 border-gray-300 shadow-sm" alt="${escapeHtml(prof.professor_name)}">
+                            <div>
+                                <h3 class="text-base font-bold gradient-text">${escapeHtml(prof.professor_name)}</h3>
+                                <p class="text-xs text-gray-500">${escapeHtml(prof.plantilla_title || 'Professor')}</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 italic py-2">No schedule available for this professor.</p>
+                        <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                            <span class="text-xs text-gray-500">
+                                <i class="fas fa-database text-green-500 mr-1"></i>From database
+                            </span>
+                            <button onclick="quickAsk('Tell me about ${escapeHtml(prof.professor_name).replace(/'/g, "\\'")}'); return false;" 
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                <i class="fas fa-info-circle mr-1"></i>View full profile
+                            </button>
+                        </div>
+                    </div>
+                `;
+                addBotMessage(noScheduleCard, true);
+                return;
+            }
+            
+            const scheduleRows = prof.schedules.map(s => {
+                let fileButton = '';
+                if (s.has_file && s.file_name) {
+                    const fileIcon = getFileIcon(s.file_extension || 'file');
+                    fileButton = `
+                        <a href="view_schedule.php?id=${s.id}" target="_blank" 
+                           class="inline-flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-all shadow-sm hover:shadow"
+                           title="${escapeHtml(s.file_name)}">
+                            <i class="fas ${fileIcon}"></i>
+                            <span>Click to view</span>
+                        </a>
+                    `;
+                }
+                
+                return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                    <td class="px-3 py-2 text-xs">${escapeHtml(s.subject)}</td>
+                    <td class="px-3 py-2 text-xs">${escapeHtml(s.day)}</td>
+                    <td class="px-3 py-2 text-xs">${escapeHtml(s.time)}</td>
+                    <td class="px-3 py-2 text-xs">${escapeHtml(s.room)}</td>
+                    <td class="px-3 py-2 text-xs">${fileButton || '<span class="text-gray-400">No file</span>'}</td>
+                </tr>
+            `;
+            }).join('');
+            
+            const scheduleCount = prof.schedules.length;
+            
+            const scheduleCard = `
+                <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 mb-3">
+                    <div class="flex items-center gap-2 mb-3">
+                        <img src="${prof.photo || 'Images/default.png'}" class="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 shadow-sm" alt="${escapeHtml(prof.professor_name)}">
+                        <div class="flex-1">
+                            <h3 class="text-base font-bold gradient-text">${escapeHtml(prof.professor_name)}</h3>
+                            <p class="text-xs text-gray-500">${escapeHtml(prof.plantilla_title || 'Professor')}</p>
+                        </div>
+                        <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-semibold">
+                            ${scheduleCount} class${scheduleCount !== 1 ? 'es' : ''}
+                        </span>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-xs font-semibold mb-2 flex items-center gap-1">
+                            <i class="fas fa-calendar-alt text-indigo-500"></i>
+                            <span>Class Schedule</span>
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gradient-to-r from-indigo-50 to-purple-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-xs font-semibold text-indigo-700">Subject</th>
+                                        <th class="px-3 py-2 text-xs font-semibold text-indigo-700">Day</th>
+                                        <th class="px-3 py-2 text-xs font-semibold text-indigo-700">Time</th>
+                                        <th class="px-3 py-2 text-xs font-semibold text-indigo-700">Room</th>
+                                        <th class="px-3 py-2 text-xs font-semibold text-indigo-700">File</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${scheduleRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                        <span class="text-xs text-gray-500">
+                            <i class="fas fa-database text-green-500 mr-1"></i>From database
+                        </span>
+                        <button onclick="quickAsk('Tell me about ${escapeHtml(prof.professor_name).replace(/'/g, "\\'")}'); return false;" 
+                                class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                            <i class="fas fa-info-circle mr-1"></i>View full profile
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            addBotMessage(scheduleCard, true);
         }
         
         // Check for conversational intents from database
@@ -877,10 +1144,22 @@ if (!isset($_SESSION['role'])) {
                 console.log('Search data:', data); // Debug log
                 
                 if (data.professors && data.professors.length > 0) {
-                    addBotMessage(`🔍 Found match(es) for "${name}":`);
+                    const matchType = data.match_type || 'partial';
+                    let message = '';
+                    
+                    if (matchType === 'exact') {
+                        message = `✅ Exact match for "${name}":`;
+                    } else if (matchType === 'word') {
+                        message = `🔍 Found professor(s) matching "${name}":`;
+                    } else {
+                        message = `🔍 Best match(es) for "${name}":`;
+                    }
+                    
+                    addBotMessage(message);
                     data.professors.forEach(prof => displayProfessorCard(prof));
                 } else {
-                    addBotMessage(`No professor matching "${escapeHtml(name)}" found. Try: "Show all professors"`);
+                    const errorMsg = data.message || `No professor matching "${escapeHtml(name)}" found. Try: "Show all professors"`;
+                    addBotMessage(errorMsg);
                 }
             } catch (error) {
                 console.error('Error searching professor:', error);
@@ -889,14 +1168,30 @@ if (!isset($_SESSION['role'])) {
         }
         
         function displayProfessorCard(prof) {
-            const scheduleRows = (prof.schedules || []).map(s => `
-                <tr class="border-b border-gray-100">
+            const scheduleRows = (prof.schedules || []).map(s => {
+                let fileButton = '';
+                if (s.has_file && s.file_name) {
+                    const fileIcon = getFileIcon(s.file_extension || 'file');
+                    fileButton = `
+                        <a href="view_schedule.php?id=${s.id}" target="_blank" 
+                           class="inline-flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-all shadow-sm hover:shadow"
+                           title="${escapeHtml(s.file_name)}">
+                            <i class="fas ${fileIcon}"></i>
+                            <span>Click to view</span>
+                        </a>
+                    `;
+                }
+                
+                return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
                     <td class="px-3 py-2 text-xs">${escapeHtml(s.subject)}</td>
                     <td class="px-3 py-2 text-xs">${escapeHtml(s.day)}</td>
                     <td class="px-3 py-2 text-xs">${escapeHtml(s.time)}</td>
                     <td class="px-3 py-2 text-xs">${escapeHtml(s.room)}</td>
+                    <td class="px-3 py-2 text-xs">${fileButton || '<span class="text-gray-400">No file</span>'}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
             
             const expertise = (prof.expertise || '').split(',').map(e => 
                 `<span class="inline-block bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full mr-1">${escapeHtml(e.trim())}</span>`
@@ -935,6 +1230,7 @@ if (!isset($_SESSION['role'])) {
                                         <th class="px-3 py-1 text-xs font-semibold">Day</th>
                                         <th class="px-3 py-1 text-xs font-semibold">Time</th>
                                         <th class="px-3 py-1 text-xs font-semibold">Room</th>
+                                        <th class="px-3 py-1 text-xs font-semibold">File</th>
                                     </tr>
                                 </thead>
                                 <tbody>${scheduleRows}</tbody>
@@ -961,18 +1257,37 @@ if (!isset($_SESSION['role'])) {
             });
             
             Object.entries(grouped).forEach(([name, items]) => {
-                const rows = items.map(it => `
-                    <tr class="border-b border-gray-100">
+                const rows = items.map(it => {
+                    let fileButton = '';
+                    if (it.has_file && it.file_name) {
+                        const fileIcon = getFileIcon(it.file_extension || 'file');
+                        fileButton = `
+                            <a href="view_schedule.php?id=${it.id}" target="_blank" 
+                               class="inline-flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded transition-all shadow-sm hover:shadow"
+                               title="${escapeHtml(it.file_name)}">
+                                <i class="fas ${fileIcon}"></i>
+                                <span>Click to view</span>
+                            </a>
+                        `;
+                    }
+                    
+                    return `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
                         <td class="px-2 py-1 text-xs">${escapeHtml(it.day || '')}</td>
                         <td class="px-2 py-1 text-xs">${escapeHtml(it.time || '')}</td>
                         <td class="px-2 py-1 text-xs">${escapeHtml(it.room || '')}</td>
                         <td class="px-2 py-1 text-xs">${escapeHtml(it.subject || '')}</td>
+                        <td class="px-2 py-1 text-xs">${fileButton || '<span class="text-gray-400">No file</span>'}</td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
                 
                 const card = `
                     <div class="bg-white rounded-xl p-4 shadow-lg border border-gray-100 mb-3">
-                        <h3 class="font-bold text-sm mb-2 gradient-text">${escapeHtml(name)}</h3>
+                        <h3 class="font-bold text-sm mb-2 gradient-text flex items-center gap-2">
+                            <i class="fas fa-user-tie text-indigo-600"></i>
+                            ${escapeHtml(name)}
+                        </h3>
                         <div class="overflow-x-auto">
                             <table class="w-full">
                                 <thead class="bg-purple-50">
@@ -981,6 +1296,7 @@ if (!isset($_SESSION['role'])) {
                                         <th class="px-2 py-1 text-xs">Time</th>
                                         <th class="px-2 py-1 text-xs">Room</th>
                                         <th class="px-2 py-1 text-xs">Subject</th>
+                                        <th class="px-2 py-1 text-xs">File</th>
                                     </tr>
                                 </thead>
                                 <tbody>${rows}</tbody>
@@ -1223,6 +1539,27 @@ if (!isset($_SESSION['role'])) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        // Get appropriate icon for file type
+        function getFileIcon(extension) {
+            const icons = {
+                'pdf': 'fa-file-pdf',
+                'doc': 'fa-file-word',
+                'docx': 'fa-file-word',
+                'xls': 'fa-file-excel',
+                'xlsx': 'fa-file-excel',
+                'ppt': 'fa-file-powerpoint',
+                'pptx': 'fa-file-powerpoint',
+                'jpg': 'fa-file-image',
+                'jpeg': 'fa-file-image',
+                'png': 'fa-file-image',
+                'gif': 'fa-file-image',
+                'txt': 'fa-file-alt',
+                'zip': 'fa-file-archive',
+                'rar': 'fa-file-archive'
+            };
+            return icons[extension.toLowerCase()] || 'fa-file';
         }
         
         function confirmLogout() {
